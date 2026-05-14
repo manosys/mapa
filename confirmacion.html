@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Procesando Solicitud</title>
+  <style>
+   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    width: 100%;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #1a1a1a; /* negro clarito */
+    height: 100vh;
+    display: flex;
+    align-items: flex-start; /* alinear arriba */
+    justify-content: center;
+    padding-top: 80px; /* empuja el contenido hacia el centro superior */
+  }
+  .container {
+    background: transparent; /* sin caja blanca */
+    padding: 20px;
+    width: 100%;
+    max-width: 600px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .loader {
+    border: 4px solid #333;
+    border-top: 4px solid #fff;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .success-icon {
+    width: 70px; height: 70px; background: #10b981;
+    border-radius: 50%; margin: 0 auto 20px;
+    display: none; align-items: center; justify-content: center;
+  }
+  .success-icon svg { width: 35px; height: 35px; fill: white; }
+  h1 { color: #fff; font-size: 24px; margin-bottom: 15px; }
+  p { color: #ddd; font-size: 16px; line-height: 1.6; margin-bottom: 20px; }
+  .info-box {
+    background: rgba(255,255,255,0.1); 
+    border-radius: 10px; 
+    padding: 20px;
+    margin: 20px 0; 
+    font-size: 14px; 
+    color: #fff;
+  }
+  .error { color: #ef4444; }
+  .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Loading -->
+    <div id="loading">
+      <div class="loader"></div>
+      <h1>Enviando solicitud...</h1>
+      <p>Por favor espera un momento</p>
+    </div>
+
+    <!-- Success -->
+    <div id="success" class="hidden">
+      <div class="success-icon" style="display: flex;">
+        <svg viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+        </svg>
+      </div>
+      <h1>¡Solicitud Enviada! 🎉</h1>
+      <p>Tu solicitud ha sido recibida correctamente. La estamos revisando y te contactaremos pronto.</p>
+      <div class="info-box">
+        ✓ Registro guardado<br>
+        ✓ Email de notificación enviado<br>
+        ⏱ Tiempo de respuesta: 24-48 horas
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div id="error" class="hidden">
+      <h1 class="error">Oops! 😕</h1>
+      <p class="error">Hubo un problema al enviar tu solicitud.</p>
+      <p>Por favor inténtalo de nuevo.</p>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // URL de tu Google Apps Script
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby5rZhqdwo25KgCO177q3dEO4XD08IHOgVZwStji2SkPWL1nuJE26X48uYFk_6FIlly/exec';
+
+    // Normalizar fecha
+    function formatFecha(valor) {
+      if (!valor) return 'VACIO';
+      if (valor.includes('hace')) return valor; // si viene relativo, lo dejamos
+      const fecha = new Date(valor);
+      if (!isNaN(fecha)) {
+        return fecha.getDate() + '/' + (fecha.getMonth() + 1) + '/' + fecha.getFullYear();
+      }
+      return valor;
+    }
+
+    async function enviarSolicitud() {
+      try {
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: (urlParams.get('email') || '').trim(),
+            nombre: (urlParams.get('nombre') || '').trim(),
+            dni: (urlParams.get('dni') || '').trim(),      
+            fechaNac: formatFecha(urlParams.get('fechaNac')),    
+            telefono: (urlParams.get('telefono') || '').trim(),
+            timestamp: new Date().toISOString()
+          })
+        });
+        mostrarExito();
+      } catch (error) {
+        console.error('Error:', error);
+        mostrarError();
+      }
+    }
+
+    function mostrarExito() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('success').classList.remove('hidden');
+    }
+    function mostrarError() {
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('error').classList.remove('hidden');
+    }
+
+    window.addEventListener('load', enviarSolicitud);
+  </script>
+</body>
+</html>
