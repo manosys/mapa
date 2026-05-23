@@ -59,12 +59,12 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLKZ2RjjLm7EVTZbKJ3HSUeZyk8WgwvJ0KSFAe0fx_OOevl7y4tXhwyXdcQli7B81BIQ/exec';
+  const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-KPfxaeRjQbSy_5K4_GvMw8D6VQ821ORYI-PGYlxD2NYr394mp-vhAAj-cFCeAvfMzw/exec';
 
-  const p         = new URLSearchParams(window.location.search);
-  const name      = p.get('name')      || '';
-  const direccion = p.get('direccion') || '';
-  const precio    = p.get('precio')    || '';
+  const p          = new URLSearchParams(window.location.search);
+  const categoria  = p.get('categoria') || '';
+  const direccion  = p.get('direccion') || '';
+  const precio     = p.get('precio')    || '';
 
   const map = L.map('map', { zoomControl: true }).setView([-34.6037, -58.3816], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -72,7 +72,7 @@
   }).addTo(map);
 
   const url = SCRIPT_URL
-    + '?name='      + encodeURIComponent(name)
+    + '?categoria=' + encodeURIComponent(categoria)
     + '&direccion=' + encodeURIComponent(direccion)
     + '&precio='    + encodeURIComponent(precio);
 
@@ -82,7 +82,6 @@
       const ok = html.includes('Evento Guardado') || html.includes('evento guardado');
       if (!ok) throw new Error('Respuesta inesperada del servidor');
 
-      // ── Leer datos desde el tag JSON embebido por el script ──
       let lat = null, lng = null, barrio = '', comuna = '';
 
       const jsonMatch = html.match(/<div id="datos-json"[^>]*>([\s\S]*?)<\/div>/);
@@ -98,7 +97,6 @@
         }
       }
 
-      // ── Fallback con regex si el tag JSON no está disponible ──
       if (!lat) {
         const latM = html.match(/Lat:\s*([-\d.]+)/);
         const lngM = html.match(/Lng:\s*([-\d.]+)/);
@@ -115,7 +113,7 @@
 
         const popupHTML = `
           <div class="popup-wrap">
-            <div class="popup-nombre">${name}</div>
+            <div class="popup-nombre">${categoria}</div>
             ${direccion ? `<div class="popup-fila">📍 <span>${direccion}</span></div>` : ''}
             ${barrio    ? `<div class="popup-fila">🏘️ <span>${barrio}</span></div>`    : ''}
             ${comuna    ? `<div class="popup-fila">🏛️ <span>Comuna ${comuna}</span></div>` : ''}
