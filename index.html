@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Eventos</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 100vw; height: 100vh; overflow: hidden; }
+        #map { width: 100%; height: 100%; }
+
+        .loading-screen {
+            position: fixed; inset: 0; z-index: 2000;
+            background: #f0f4f8;
+            display: flex; align-items: center; justify-content: center;
+            flex-direction: column; gap: 14px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #555;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 4px solid #dde3ea;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Buscador flotante */
+        .buscador {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            z-index: 1000;
+            width: 220px;
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 25px;
+            padding: 8px 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+            gap: 8px;
+        }
+        .buscador input {
+            border: none;
+            outline: none;
+            font-size: 14px;
+            width: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: #333;
+        }
+        .buscador input::placeholder { color: #aaa; }
+        .buscador .limpiar {
+            cursor: pointer;
+            color: #aaa;
+            font-size: 18px;
+            line-height: 1;
+            display: none;
+        }
+        .buscador .limpiar:hover { color: #666; }
+
+        /* Contador de resultados */
+        .contador {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(0,0,0,0.65);
+            color: white;
+            font-size: 12px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: none;
+        }
+
+        .popup-wrap { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-width: 180px; }
+        .popup-nombre { font-size: 15px; font-weight: bold; color: #1a1a2e; margin-bottom: 8px; border-bottom: 2px solid #667eea; padding-bottom: 6px; }
+        .popup-fila { display: flex; align-items: flex-start; gap: 6px; margin: 5px 0; font-size: 13px; color: #444; }
+        .popup-fila span { line-height: 1.4; }
+        .popup-precio { font-size: 17px; font-weight: bold; color: #27ae60; margin-top: 8px; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="loading-screen" id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">Cargando eventos...</div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Buscador flotante (solo en modo todos los eventos) -->
+    <div class="buscador" id="buscador" style="display:none">
+        <span>🔍</span>
+        <input type="text" id="inputBarrio" placeholder="Buscar por barrio..." />
+        <span class="limpiar" id="limpiar">✕</span>
+    </div>
+
+    <div class="contador" id="contador"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_xfabgSBXqErxyp9NmafAIuXtkwFmB_Zy-MGX1n3kcQMeZx7z9l-OoIu0lPxofeBgybp6bXbNFuNh/pub?gid=1622011769&single=true&output=csv';
+
+    const COL_NAME      = 0;
+    const COL_DIRECCION = 1;
+    const COL_LAT       = 2;
+    const COL_LNG       = 3;
+    const COL_BARRIO    = 4;
+    const COL_PRECIO    = 5;
+    const COL_COMUNA    = 6;
+
+    const map = L.map('map').setView([-34.6037, -58.3816], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors', maxZoom: 19
+    }).addTo(map);
+
+    function parseCoordenada(valor) {
+        if (!valor) return NaN;
+        return parseFloat(valor.toString().replace(/"/g, '').replace(',', '.'));
+    }
+
+    function crearPopup(datos) {
+        return `
+            <div class="popup-wrap">
+                <div class="popup-nombre">${datos.nombre || 'Evento'}</div>
+                ${datos.direccion ? `<div class="popup-fila">📍 <span>${datos.direccion}</span></div>` : ''}
+                ${datos.barrio    ? `<div class="popup-fila">🏘️ <span>${datos.barrio}</span></div>`    : ''}
+                ${datos.comuna    ? `<div class="popup-fila">🏛️ <span>Comuna ${datos.comuna}</span></div>` : ''}
+                ${datos.precio    ? `<div class="popup-precio">$${datos.precio}</div>`                 : ''}
+            </div>`;
+    }
+
+    function parseCSVLine(line) {
+        const result = [];
+        let cell = '', inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i], next = line[i+1];
+            if      (char === '"' && !inQuotes)               { inQuotes = true; }
+            else if (char === '"' && inQuotes && next === '"') { cell += '"'; i++; }
+            else if (char === '"' && inQuotes)                 { inQuotes = false; }
+            else if (char === ',' && !inQuotes)                { result.push(cell); cell = ''; }
+            else                                               { cell += char; }
+        }
+        result.push(cell);
+        return result;
+    }
+
+    // ===== DETECTAR MODO =====
+    const urlParams   = new URLSearchParams(window.location.search);
+    const nameParam   = urlParams.get('name') || '';
+    const modoDetalle = nameParam.trim() !== '';
+
+    // ── MODO 1: DETALLE DE EVENTO ──
+    if (modoDetalle) {
+        document.getElementById('loading-text').textContent = 'Cargando evento...';
+
+        fetch(sheetURL)
+            .then(r => { if (!r.ok) throw new Error('Error HTTP: ' + r.status); return r.text(); })
+            .then(csvText => {
+                document.getElementById('loading').style.display = 'none';
+
+                const lines     = csvText.trim().split('\n');
+                const dataLines = lines.slice(1);
+                const nombreBuscado = nameParam.trim().toLowerCase();
+                let encontrado = false;
+
+                for (const line of dataLines) {
+                    if (!line.trim()) continue;
+                    const cols   = parseCSVLine(line);
+                    const nombre = cols[COL_NAME]     ?.replace(/"/g,'').trim() || '';
+                    const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
+                    const lat    = parseCoordenada(cols[COL_LAT]);
+                    const lng    = parseCoordenada(cols[COL_LNG]);
+                    const barrio = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
+                    const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
+                    const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
+
+                    if (nombre.toLowerCase() === nombreBuscado && !isNaN(lat) && !isNaN(lng)) {
+                        map.setView([lat, lng], 16);
+                        L.marker([lat, lng])
+                            .addTo(map)
+                            .bindPopup(crearPopup({ nombre, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
+                            .openPopup();
+                        encontrado = true;
+                        break;
+                    }
+                }
+
+                if (!encontrado) {
+                    for (const line of dataLines) {
+                        if (!line.trim()) continue;
+                        const cols   = parseCSVLine(line);
+                        const nombre = cols[COL_NAME]?.replace(/"/g,'').trim() || '';
+                        const lat    = parseCoordenada(cols[COL_LAT]);
+                        const lng    = parseCoordenada(cols[COL_LNG]);
+
+                        if (nombre.toLowerCase().includes(nombreBuscado) && !isNaN(lat) && !isNaN(lng)) {
+                            const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
+                            const barrio = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
+                            const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
+                            const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
+                            map.setView([lat, lng], 16);
+                            L.marker([lat, lng])
+                                .addTo(map)
+                                .bindPopup(crearPopup({ nombre, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
+                                .openPopup();
+                            break;
+                        }
+                    }
+                }
+            })
+            .catch(err => {
+                document.getElementById('loading').style.display = 'none';
+                console.error('❌ Error:', err);
+            });
+    }
+
+    // ── MODO 2: TODOS LOS EVENTOS (con buscador) ──
+    else {
+        // Guardar todos los eventos para poder filtrar
+        let todosLosEventos = [];
+        let todosLosMarkers = [];
+
+        fetch(sheetURL)
+            .then(r => { if (!r.ok) throw new Error('Error HTTP: ' + r.status); return r.text(); })
+            .then(csvText => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('buscador').style.display = 'flex';
+
+                const lines     = csvText.trim().split('\n');
+                const dataLines = lines.slice(1);
+
+                dataLines.forEach(line => {
+                    if (!line.trim()) return;
+                    const cols   = parseCSVLine(line);
+                    const nombre = cols[COL_NAME]     ?.replace(/"/g,'').trim() || '';
+                    const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
+                    const lat    = parseCoordenada(cols[COL_LAT]);
+                    const lng    = parseCoordenada(cols[COL_LNG]);
+                    const barrio = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
+                    const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
+                    const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
+
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        todosLosEventos.push({ nombre: nombre || dir, direccion: dir, lat, lng, barrio, precio, comuna });
+                    }
+                });
+
+                mostrarEventos(todosLosEventos);
+            })
+            .catch(err => {
+                document.getElementById('loading').style.display = 'none';
+                console.error('❌ Error cargando eventos:', err);
+            });
+
+        function mostrarEventos(eventos) {
+            // Limpiar markers anteriores
+            todosLosMarkers.forEach(m => map.removeLayer(m));
+            todosLosMarkers = [];
+            const bounds = [];
+
+            eventos.forEach(ev => {
+                const marker = L.marker([ev.lat, ev.lng])
+                    .addTo(map)
+                    .bindPopup(crearPopup(ev), { maxWidth: 260 });
+                todosLosMarkers.push(marker);
+                bounds.push([ev.lat, ev.lng]);
+            });
+
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+
+            // Mostrar contador si hay filtro activo
+            const contador = document.getElementById('contador');
+            const filtro   = document.getElementById('inputBarrio').value.trim();
+            if (filtro) {
+                contador.textContent = eventos.length === 0
+                    ? 'Sin eventos en ese barrio'
+                    : `${eventos.length} evento${eventos.length > 1 ? 's' : ''} en "${filtro}"`;
+                contador.style.display = 'block';
+            } else {
+                contador.style.display = 'none';
+            }
+        }
+
+        // ── Lógica del buscador ──
+        const input  = document.getElementById('inputBarrio');
+        const limpiar = document.getElementById('limpiar');
+
+        input.addEventListener('input', () => {
+            const texto = input.value.trim().toLowerCase();
+            limpiar.style.display = texto ? 'block' : 'none';
+
+            if (!texto) {
+                mostrarEventos(todosLosEventos);
+                return;
+            }
+
+            const filtrados = todosLosEventos.filter(ev =>
+                ev.barrio.toLowerCase().includes(texto)
+            );
+            mostrarEventos(filtrados);
+        });
+
+        limpiar.addEventListener('click', () => {
+            input.value = '';
+            limpiar.style.display = 'none';
+            mostrarEventos(todosLosEventos);
+        });
+    }
+</script>
+</body>
+</html>
