@@ -105,7 +105,7 @@
 <script>
     const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_xfabgSBXqErxyp9NmafAIuXtkwFmB_Zy-MGX1n3kcQMeZx7z9l-OoIu0lPxofeBgybp6bXbNFuNh/pub?gid=1622011769&single=true&output=csv';
 
-    const COL_NAME      = 0;
+    const COL_CATEGORIA      = 0;
     const COL_DIRECCION = 1;
     const COL_LAT       = 2;
     const COL_LNG       = 3;
@@ -126,7 +126,7 @@
     function crearPopup(datos) {
         return `
             <div class="popup-wrap">
-                <div class="popup-nombre">${datos.nombre || 'Evento'}</div>
+                <div class="popup-nombre">${datos.categoria || 'Evento'}</div>
                 ${datos.direccion ? `<div class="popup-fila">📍 <span>${datos.direccion}</span></div>` : ''}
                 ${datos.barrio    ? `<div class="popup-fila">🏘️ <span>${datos.barrio}</span></div>`    : ''}
                 ${datos.comuna    ? `<div class="popup-fila">🏛️ <span>Comuna ${datos.comuna}</span></div>` : ''}
@@ -151,8 +151,8 @@
 
     // ===== DETECTAR MODO =====
     const urlParams   = new URLSearchParams(window.location.search);
-    const nameParam   = urlParams.get('name') || '';
-    const modoDetalle = nameParam.trim() !== '';
+    const categoriaParam   = urlParams.get('categoria') || '';
+    const modoDetalle = categoriaParam.trim() !== '';
 
     // ── MODO 1: DETALLE DE EVENTO ──
     if (modoDetalle) {
@@ -165,13 +165,13 @@
 
                 const lines     = csvText.trim().split('\n');
                 const dataLines = lines.slice(1);
-                const nombreBuscado = nameParam.trim().toLowerCase();
+                const categoriaBuscado = categoriaParam.trim().toLowerCase();
                 let encontrado = false;
 
                 for (const line of dataLines) {
                     if (!line.trim()) continue;
                     const cols   = parseCSVLine(line);
-                    const nombre = cols[COL_NAME]     ?.replace(/"/g,'').trim() || '';
+                    const categoria = cols[COL_CATEGORIA]     ?.replace(/"/g,'').trim() || '';
                     const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
                     const lat    = parseCoordenada(cols[COL_LAT]);
                     const lng    = parseCoordenada(cols[COL_LNG]);
@@ -179,11 +179,11 @@
                     const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
                     const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
 
-                    if (nombre.toLowerCase() === nombreBuscado && !isNaN(lat) && !isNaN(lng)) {
+                    if (categoria.toLowerCase() === categoriaBuscado && !isNaN(lat) && !isNaN(lng)) {
                         map.setView([lat, lng], 16);
                         L.marker([lat, lng])
                             .addTo(map)
-                            .bindPopup(crearPopup({ nombre, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
+                            .bindPopup(crearPopup({ categoria, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
                             .openPopup();
                         encontrado = true;
                         break;
@@ -194,11 +194,11 @@
                     for (const line of dataLines) {
                         if (!line.trim()) continue;
                         const cols   = parseCSVLine(line);
-                        const nombre = cols[COL_NAME]?.replace(/"/g,'').trim() || '';
+                        const categoria = cols[COL_CATEGORIA]?.replace(/"/g,'').trim() || '';
                         const lat    = parseCoordenada(cols[COL_LAT]);
                         const lng    = parseCoordenada(cols[COL_LNG]);
 
-                        if (nombre.toLowerCase().includes(nombreBuscado) && !isNaN(lat) && !isNaN(lng)) {
+                        if (categoria.toLowerCase().includes(categoriaBuscado) && !isNaN(lat) && !isNaN(lng)) {
                             const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
                             const barrio = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
                             const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
@@ -206,7 +206,7 @@
                             map.setView([lat, lng], 16);
                             L.marker([lat, lng])
                                 .addTo(map)
-                                .bindPopup(crearPopup({ nombre, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
+                                .bindPopup(crearPopup({ categoria, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
                                 .openPopup();
                             break;
                         }
@@ -237,7 +237,7 @@
                 dataLines.forEach(line => {
                     if (!line.trim()) return;
                     const cols   = parseCSVLine(line);
-                    const nombre = cols[COL_NAME]     ?.replace(/"/g,'').trim() || '';
+                    const categoria = cols[COL_CATEGORIA]     ?.replace(/"/g,'').trim() || '';
                     const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
                     const lat    = parseCoordenada(cols[COL_LAT]);
                     const lng    = parseCoordenada(cols[COL_LNG]);
@@ -246,7 +246,7 @@
                     const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        todosLosEventos.push({ nombre: nombre || dir, direccion: dir, lat, lng, barrio, precio, comuna });
+                        todosLosEventos.push({ categoria: categoria || dir, direccion: dir, lat, lng, barrio, precio, comuna });
                     }
                 });
 
