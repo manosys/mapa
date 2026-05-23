@@ -62,7 +62,7 @@
   const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLKZ2RjjLm7EVTZbKJ3HSUeZyk8WgwvJ0KSFAe0fx_OOevl7y4tXhwyXdcQli7B81BIQ/exec';
 
   const p         = new URLSearchParams(window.location.search);
-  const name      = p.get('name')      || '';
+  const categoria      = p.get('categoria')      || '';
   const direccion = p.get('direccion') || '';
   const precio    = p.get('precio')    || '';
 
@@ -72,7 +72,7 @@
   }).addTo(map);
 
   const url = SCRIPT_URL
-    + '?name='      + encodeURIComponent(name)
+    + '?categoria='      + encodeURIComponent(categoria)
     + '&direccion=' + encodeURIComponent(direccion)
     + '&precio='    + encodeURIComponent(precio);
 
@@ -115,7 +115,7 @@
 
         const popupHTML = `
           <div class="popup-wrap">
-            <div class="popup-nombre">${name}</div>
+            <div class="popup-nombre">${categoria}</div>
             ${direccion ? `<div class="popup-fila">📍 <span>${direccion}</span></div>` : ''}
             ${barrio    ? `<div class="popup-fila">🏘️ <span>${barrio}</span></div>`    : ''}
             ${comuna    ? `<div class="popup-fila">🏛️ <span>Comuna ${comuna}</span></div>` : ''}
