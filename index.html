@@ -1,180 +1,170 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Eventos</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { width: 100vw; height: 100vh; overflow: hidden; background: #121212; }
-        #map { width: 100%; height: 100%; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mapa de Eventos</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { width: 100vw; height: 100vh; overflow: hidden; background: #121212; }
+    #map { width: 100%; height: 100%; }
 
-        .loading-screen {
-            position: fixed; inset: 0; z-index: 2000;
-            background: #121212;
-            display: flex; align-items: center; justify-content: center;
-            flex-direction: column; gap: 14px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            color: #eee;
-        }
-        .spinner {
-            width: 40px; height: 40px;
-            border: 4px solid #333;
-            border-top-color: #ffd700;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-screen {
+      position: fixed; inset: 0; z-index: 2000;
+      background: #121212;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #eee;
+    }
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #333;
+      border-top-color: #ffd700;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Buscador flotante */
-        .buscador {
-            position: absolute;
-            top: 12px;
-            right: 16px;
-            z-index: 1000;
-            width: 220px;
-            display: flex;
-            align-items: center;
-            background: rgba(30,30,30,0.9);
-            border-radius: 25px;
-            padding: 8px 16px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
-            gap: 8px;
-        }
-        .buscador input {
-            border: none;
-            outline: none;
-            font-size: 14px;
-            width: 100%;
-            background: transparent;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            color: #eee;
-        }
-        .buscador input::placeholder { color: #888; }
-        .buscador .limpiar {
-            cursor: pointer;
-            color: #888;
-            font-size: 18px;
-            line-height: 1;
-            display: none;
-        }
-        .buscador .limpiar:hover { color: #ffd700; }
+    .buscador {
+      position: absolute; top: 12px; right: 16px; z-index: 1000;
+      width: 220px; display: flex; align-items: center;
+      background: rgba(30,30,30,0.9); border-radius: 25px;
+      padding: 8px 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.6); gap: 8px;
+    }
+    .buscador input {
+      border: none; outline: none; font-size: 14px; width: 100%;
+      background: transparent; color: #eee;
+    }
+    .buscador input::placeholder { color: #888; }
+    .buscador .limpiar {
+      cursor: pointer; color: #888; font-size: 18px; line-height: 1; display: none;
+    }
+    .buscador .limpiar:hover { color: #ffd700; }
 
-        /* Contador de resultados */
-        .contador {
-            position: absolute;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(0,0,0,0.75);
-            color: #eee;
-            font-size: 12px;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            display: none;
-        }
+    .contador {
+      position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; background: rgba(0,0,0,0.75); color: #eee;
+      font-size: 12px; padding: 5px 14px; border-radius: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: none;
+    }
 
-        .popup-wrap { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-width: 180px; background: #1a1a1a; color: #eee; border-radius: 8px; padding: 10px; }
-        .popup-nombre { font-size: 15px; font-weight: bold; color: #ffd700; margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 6px; }
-        .popup-fila { display: flex; align-items: flex-start; gap: 6px; margin: 5px 0; font-size: 13px; color: #ccc; }
-        .popup-fila span { line-height: 1.4; }
-        .popup-precio { font-size: 17px; font-weight: bold; color: #00c853; margin-top: 8px; text-align: center; }
-    </style>
+    .popup-wrap { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-width: 180px; background: #1a1a1a; color: #eee; border-radius: 8px; padding: 10px; }
+    .popup-nombre { font-size: 15px; font-weight: bold; color: #ffd700;
+      margin-bottom: 8px; border-bottom: 1px solid #444; padding-bottom: 6px; }
+    .popup-fila { display: flex; align-items: flex-start; gap: 6px; margin: 5px 0;
+      font-size: 13px; color: #ccc; }
+    .popup-precio { font-size: 17px; font-weight: bold; color: #00c853;
+      margin-top: 8px; text-align: center; }
+  </style>
 </head>
 <body>
 <div class="loading-screen" id="loading">
-    <div class="spinner"></div>
-    <div id="loading-text">Cargando eventos...</div>
+  <div class="spinner"></div>
+  <div id="loading-text">Cargando eventos...</div>
 </div>
 
 <div id="map"></div>
 
-<!-- Buscador flotante -->
 <div class="buscador" id="buscador" style="display:none">
-    <span>🔍</span>
-    <input type="text" id="inputBarrio" placeholder="Buscar por barrio..." />
-    <span class="limpiar" id="limpiar">✕</span>
+  <span>🔍</span>
+  <input type="text" id="inputBarrio" placeholder="Buscar por barrio..." />
+  <span class="limpiar" id="limpiar">✕</span>
 </div>
 
 <div class="contador" id="contador"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_xfabgSBXqErxyp9NmafAIuXtkwFmB_Zy-MGX1n3kcQMeZx7z9l-OoIu0lPxofeBgybp6bXbNFuNh/pub?gid=1622011769&single=true&output=csv';
+const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_xfabgSBXqErxyp9NmafAIuXtkwFmB_Zy-MGX1n3kcQMeZx7z9l-OoIu0lPxofeBgybp6bXbNFuNh/pub?gid=1622011769&single=true&output=csv';
 
-    const COL_CATEGORIA = 0, COL_DIRECCION = 1, COL_LAT = 2, COL_LNG = 3, COL_BARRIO = 4, COL_PRECIO = 5, COL_COMUNA = 6;
+const COL_CATEGORIA=0, COL_DIRECCION=1, COL_LAT=2, COL_LNG=3, COL_BARRIO=4, COL_PRECIO=5, COL_COMUNA=6;
 
-    const map = L.map('map').setView([-34.6037, -58.3816], 12);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap, © Carto',
-        subdomains: 'abcd',
-        maxZoom: 19
-    }).addTo(map);
+const map = L.map('map').setView([-34.6037, -58.3816], 12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap, © Carto', subdomains: 'abcd', maxZoom: 19
+}).addTo(map);
 
-    const customIcon = L.icon({
-        iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
-        iconSize: [28, 28],
-        iconAnchor: [14, 28],
-        popupAnchor: [0, -28]
-    });
+const customIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+  iconSize: [28, 28], iconAnchor: [14, 28], popupAnchor: [0, -28]
+});
 
-    function parseCoordenada(valor) {
-        if (!valor) return NaN;
-        return parseFloat(valor.toString().replace(/"/g, '').replace(',', '.'));
-    }
+function parseCoordenada(valor) {
+  if (!valor) return NaN;
+  return parseFloat(valor.toString().replace(/"/g, '').replace(',', '.'));
+}
 
-    function crearPopup(datos) {
-        return `
-            <div class="popup-wrap">
-                <div class="popup-nombre">${datos.categoria || 'Evento'}</div>
-                ${datos.direccion ? `<div class="popup-fila">📍 <span>${datos.direccion}</span></div>` : ''}
-                ${datos.barrio    ? `<div class="popup-fila">🏘️ <span>${datos.barrio}</span></div>`    : ''}
-                ${datos.comuna    ? `<div class="popup-fila">🏛️ <span>Comuna ${datos.comuna}</span></div>` : ''}
-                ${datos.precio    ? `<div class="popup-precio">$${datos.precio}</div>`                 : ''}
-            </div>`;
-    }
+function crearPopup(datos) {
+  return `
+    <div class="popup-wrap">
+      <div class="popup-nombre">${datos.categoria || 'Evento'}</div>
+      ${datos.direccion ? `<div class="popup-fila">📍 <span>${datos.direccion}</span></div>` : ''}
+      ${datos.barrio ? `<div class="popup-fila">🏘️ <span>${datos.barrio}</span></div>` : ''}
+      ${datos.comuna ? `<div class="popup-fila">🏛️ <span>Comuna ${datos.comuna}</span></div>` : ''}
+      ${datos.precio ? `<div class="popup-precio">$${datos.precio}</div>` : ''}
+    </div>`;
+}
 
-    function parseCSVLine(line) {
-        const result = [];
-        let cell = '', inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i], next = line[i+1];
-            if      (char === '"' && !inQuotes)               { inQuotes = true; }
-            else if (char === '"' && inQuotes && next === '"') { cell += '"'; i++; }
-            else if (char === '"' && inQuotes)                 { inQuotes = false; }
-            else if (char === ',' && !inQuotes)                { result.push(cell); cell = ''; }
-            else                                               { cell += char; }
+// Parser simplificado
+function parseCSVLine(line) {
+  return line.split(',').map(cell => cell.replace(/"/g,'').trim());
+}
+
+const urlParams = new URLSearchParams(window.location.search);
+const categoriaParam = urlParams.get('categoria') || '';
+const modoDetalle = categoriaParam.trim() !== '';
+
+if (modoDetalle) {
+  document.getElementById('loading-text').textContent = 'Cargando evento...';
+  fetch(sheetURL)
+    .then(r => r.text())
+    .then(csvText => {
+      document.getElementById('loading').style.display = 'none';
+      const lines = csvText.trim().split('\n');
+      const dataLines = lines.slice(1);
+      const categoriaBuscado = categoriaParam.trim().toLowerCase();
+      let encontrado = false;
+
+      for (const line of dataLines) {
+        const cols = parseCSVLine(line);
+        const categoria = cols[COL_CATEGORIA] || '';
+        const dir = cols[COL_DIRECCION] || '';
+        const lat = parseCoordenada(cols[COL_LAT]);
+        const lng = parseCoordenada(cols[COL_LNG]);
+        const barrio = cols[COL_BARRIO] || '';
+        const precio = cols[COL_PRECIO] || '';
+        const comuna = cols[COL_COMUNA] || '';
+
+        if (categoria.toLowerCase() === categoriaBuscado && !isNaN(lat) && !isNaN(lng)) {
+          map.setView([lat, lng], 16);
+          L.marker([lat, lng], {icon: customIcon})
+            .addTo(map)
+            .bindPopup(crearPopup({categoria, direccion: dir, barrio, precio, comuna}), {maxWidth: 260})
+            .openPopup();
+          encontrado = true;
+          break;
         }
-        result.push(cell);
-        return result;
-    }
+      }
+      if (!encontrado) console.warn("Evento no encontrado en CSV");
+    })
+    .catch(err => {
+      document.getElementById('loading').style.display = 'none';
+      alert("Error cargando evento: " + err);
+    });
+} else {
+  let todosLosEventos = [], todosLosMarkers = [];
+  fetch(sheetURL)
+    .then(r => r.text())
+    .then(csvText => {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('buscador').style.display = 'flex';
+      const lines = csvText.trim().split('\n');
+      const dataLines = lines.slice(1);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const categoriaParam = urlParams.get('categoria') || '';
-    const modoDetalle = categoriaParam.trim() !== '';
-
-    if (modoDetalle) {
-        document.getElementById('loading-text').textContent = 'Cargando evento...';
-
-        fetch(sheetURL)
-            .then(r => { if (!r.ok) throw new Error('Error HTTP: ' + r.status); return r.text(); })
-            .then(csvText => {
-                document.getElementById('loading').style.display = 'none';
-
-                const lines = csvText.trim().split('\n');
-                const dataLines = lines.slice(1);
-                const categoriaBuscado = categoriaParam.trim().toLowerCase();
-                let encontrado = false;
-
-                for (const line of dataLines) {
-                    if (!line.trim()) continue;
-                    const cols = parseCSVLine(line);
-                    const categoria = cols[COL_CATEGORIA]?.replace(/"/g,'').trim() || '';
-                    const dir = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
-                    const lat = parseCoordenada(cols[COL_LAT]);
-                    const lng = parseCoordenada(cols[COL_LNG]);
-                    const barrio = cols[COL_BARRIO]?.replace(/"/g,'').trim() || '';
-                    const precio = cols[COL_PRECIO]?.replace
+      dataLines.forEach(line => {
+        const cols = parseCSVLine(line);
+        const categoria = cols[
