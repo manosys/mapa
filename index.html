@@ -5,96 +5,292 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mapa de Eventos</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg:       #0d0f14;
+            --surface:  #151820;
+            --border:   rgba(255,255,255,0.07);
+            --accent:   #7c6dfa;
+            --accent2:  #fa6d9b;
+            --text:     #e8eaf0;
+            --muted:    #7a7e91;
+            --green:    #4ade80;
+            --radius:   14px;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { width: 100vw; height: 100vh; overflow: hidden; }
+
+        body {
+            width: 100vw; height: 100vh; overflow: hidden;
+            background: var(--bg);
+            font-family: 'DM Sans', sans-serif;
+        }
+
         #map { width: 100%; height: 100%; }
 
+        /* ── Tiles oscuros via CSS filter ── */
+        .leaflet-tile { filter: brightness(0.75) saturate(0.6) hue-rotate(200deg); }
+        .leaflet-container { background: #0d0f14; }
+
+        /* ── Loading ── */
         .loading-screen {
             position: fixed; inset: 0; z-index: 2000;
-            background: #f0f4f8;
+            background: var(--bg);
             display: flex; align-items: center; justify-content: center;
-            flex-direction: column; gap: 14px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            color: #555;
+            flex-direction: column; gap: 18px;
+        }
+        .loading-logo {
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: var(--muted);
         }
         .spinner {
-            width: 40px; height: 40px;
-            border: 4px solid #dde3ea;
-            border-top-color: #667eea;
+            width: 36px; height: 36px;
+            border: 2px solid rgba(124,109,250,0.2);
+            border-top-color: var(--accent);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.9s linear infinite;
+        }
+        #loading-text {
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 0.06em;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Buscador flotante */
-        .buscador {
+        /* ── Header pill flotante ── */
+        .header-pill {
             position: absolute;
-            top: 12px;
-            right: 16px;
-            z-index: 1000;
-            width: 220px;
-            display: flex;
-            align-items: center;
-            background: white;
-            border-radius: 25px;
-            padding: 8px 16px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-            gap: 8px;
-        }
-        .buscador input {
-            border: none;
-            outline: none;
-            font-size: 14px;
-            width: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            color: #333;
-        }
-        .buscador input::placeholder { color: #aaa; }
-        .buscador .limpiar {
-            cursor: pointer;
-            color: #aaa;
-            font-size: 18px;
-            line-height: 1;
-            display: none;
-        }
-        .buscador .limpiar:hover { color: #666; }
-
-        /* Contador de resultados */
-        .contador {
-            position: absolute;
-            bottom: 24px;
+            top: 16px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(0,0,0,0.65);
-            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            padding: 8px 18px 8px 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            backdrop-filter: blur(12px);
+            pointer-events: none;
+        }
+        .header-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50%       { opacity: 0.5; transform: scale(0.75); }
+        }
+        .header-label {
             font-size: 12px;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            display: none;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text);
         }
 
-        .popup-wrap { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-width: 180px; }
-        .popup-nombre { font-size: 15px; font-weight: bold; color: #1a1a2e; margin-bottom: 8px; border-bottom: 2px solid #667eea; padding-bottom: 6px; }
-        .popup-fila { display: flex; align-items: flex-start; gap: 6px; margin: 5px 0; font-size: 13px; color: #444; }
-        .popup-fila span { line-height: 1.4; }
-        .popup-precio { font-size: 17px; font-weight: bold; color: #27ae60; margin-top: 8px; text-align: center; }
+        /* ── Buscador flotante ── */
+        .buscador {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 40px;
+            padding: 10px 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            gap: 10px;
+            width: 230px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .buscador:focus-within {
+            border-color: rgba(124,109,250,0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 3px rgba(124,109,250,0.12);
+        }
+        .buscador-icon { font-size: 14px; opacity: 0.5; flex-shrink: 0; }
+        .buscador input {
+            border: none; outline: none;
+            font-size: 13px;
+            width: 100%;
+            background: transparent;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+        }
+        .buscador input::placeholder { color: var(--muted); }
+        .buscador .limpiar {
+            cursor: pointer;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1;
+            display: none;
+            flex-shrink: 0;
+            transition: color 0.15s;
+        }
+        .buscador .limpiar:hover { color: var(--text); }
+
+        /* ── Contador ── */
+        .contador {
+            position: absolute;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            padding: 7px 18px;
+            border-radius: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            display: none;
+        }
+        .contador span { color: var(--accent); font-family: 'DM Mono', monospace; }
+
+        /* ── Popup ── */
+        .leaflet-popup-content-wrapper {
+            background: var(--surface) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: var(--radius) !important;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.6) !important;
+            padding: 0 !important;
+            overflow: hidden;
+        }
+        .leaflet-popup-tip-container { display: none; }
+        .leaflet-popup-content { margin: 0 !important; min-width: 200px; }
+        .leaflet-popup-close-button {
+            color: var(--muted) !important;
+            font-size: 18px !important;
+            top: 10px !important;
+            right: 12px !important;
+            padding: 0 !important;
+            width: auto !important;
+            height: auto !important;
+            line-height: 1 !important;
+        }
+        .leaflet-popup-close-button:hover { color: var(--text) !important; background: none !important; }
+
+        .popup-wrap { font-family: 'DM Sans', sans-serif; }
+        .popup-header {
+            padding: 14px 16px 10px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, rgba(124,109,250,0.12), rgba(250,109,155,0.06));
+        }
+        .popup-nombre {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+            padding-right: 18px;
+            line-height: 1.3;
+        }
+        .popup-badge {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--accent);
+            background: rgba(124,109,250,0.15);
+            border-radius: 6px;
+            padding: 2px 8px;
+        }
+        .popup-body { padding: 10px 16px 14px; }
+        .popup-fila {
+            display: flex; align-items: flex-start; gap: 8px;
+            margin: 6px 0; font-size: 12px; color: var(--muted);
+            line-height: 1.45;
+        }
+        .popup-fila-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+        .popup-precio {
+            font-size: 20px; font-weight: 600;
+            color: var(--green);
+            font-family: 'DM Mono', monospace;
+            margin-top: 10px;
+            text-align: center;
+            background: rgba(74,222,128,0.08);
+            border-radius: 8px;
+            padding: 6px;
+        }
+
+        /* ── Marker custom ── */
+        .marker-pin {
+            width: 32px; height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .marker-inner {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            background: white;
+            transform: rotate(45deg);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 10px;
+        }
+
+        /* ── Zoom controls ── */
+        .leaflet-control-zoom {
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+        }
+        .leaflet-control-zoom a {
+            background: var(--surface) !important;
+            color: var(--muted) !important;
+            width: 32px !important;
+            height: 32px !important;
+            line-height: 32px !important;
+            border-bottom: 1px solid var(--border) !important;
+            font-size: 16px !important;
+            transition: color 0.15s, background 0.15s !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background: rgba(124,109,250,0.15) !important;
+            color: var(--accent) !important;
+        }
+        .leaflet-control-zoom-out { border-bottom: none !important; }
+        .leaflet-control-attribution {
+            background: var(--surface) !important;
+            color: var(--muted) !important;
+            border-top: 1px solid var(--border) !important;
+            font-size: 10px !important;
+        }
+        .leaflet-control-attribution a { color: var(--accent) !important; }
     </style>
 </head>
 <body>
 
     <div class="loading-screen" id="loading">
         <div class="spinner"></div>
+        <div class="loading-logo">Mapa de Eventos</div>
         <div id="loading-text">Cargando eventos...</div>
     </div>
 
     <div id="map"></div>
 
-    <!-- Buscador flotante (solo en modo todos los eventos) -->
+    <div class="header-pill" id="header-pill" style="display:none">
+        <div class="header-dot"></div>
+        <div class="header-label">Eventos en vivo</div>
+    </div>
+
     <div class="buscador" id="buscador" style="display:none">
-        <span>🔍</span>
+        <span class="buscador-icon">⌕</span>
         <input type="text" id="inputBarrio" placeholder="Buscar por barrio..." />
         <span class="limpiar" id="limpiar">✕</span>
     </div>
@@ -105,7 +301,7 @@
 <script>
     const sheetURL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT_xfabgSBXqErxyp9NmafAIuXtkwFmB_Zy-MGX1n3kcQMeZx7z9l-OoIu0lPxofeBgybp6bXbNFuNh/pub?gid=1622011769&single=true&output=csv';
 
-    const COL_CATEGORIA      = 0;
+    const COL_CATEGORIA = 0;
     const COL_DIRECCION = 1;
     const COL_LAT       = 2;
     const COL_LNG       = 3;
@@ -113,10 +309,36 @@
     const COL_PRECIO    = 5;
     const COL_COMUNA    = 6;
 
-    const map = L.map('map').setView([-34.6037, -58.3816], 12);
+    const map = L.map('map', { zoomControl: false }).setView([-34.6037, -58.3816], 12);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors', maxZoom: 19
+        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+        maxZoom: 19
     }).addTo(map);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+    // Marcador personalizado
+    function crearIcono(categoria) {
+        const colores = {
+            default: '#7c6dfa'
+        };
+        const color = colores[categoria?.toLowerCase()] || '#7c6dfa';
+
+        return L.divIcon({
+            className: '',
+            html: `
+                <div style="
+                    width:14px; height:14px; border-radius:50%;
+                    background:${color};
+                    border:2px solid rgba(255,255,255,0.9);
+                    box-shadow:0 0 0 3px ${color}44, 0 2px 8px rgba(0,0,0,0.5);
+                "></div>`,
+            iconSize: [14, 14],
+            iconAnchor: [7, 7],
+            popupAnchor: [0, -10]
+        });
+    }
 
     function parseCoordenada(valor) {
         if (!valor) return NaN;
@@ -126,11 +348,15 @@
     function crearPopup(datos) {
         return `
             <div class="popup-wrap">
-                <div class="popup-nombre">${datos.categoria || 'Evento'}</div>
-                ${datos.direccion ? `<div class="popup-fila">📍 <span>${datos.direccion}</span></div>` : ''}
-                ${datos.barrio    ? `<div class="popup-fila">🏘️ <span>${datos.barrio}</span></div>`    : ''}
-                ${datos.comuna    ? `<div class="popup-fila">🏛️ <span>Comuna ${datos.comuna}</span></div>` : ''}
-                ${datos.precio    ? `<div class="popup-precio">$${datos.precio}</div>`                 : ''}
+                <div class="popup-header">
+                    <div class="popup-nombre">${datos.categoria || 'Evento'}</div>
+                    ${datos.barrio ? `<span class="popup-badge">${datos.barrio}</span>` : ''}
+                </div>
+                <div class="popup-body">
+                    ${datos.direccion ? `<div class="popup-fila"><span class="popup-fila-icon">📍</span><span>${datos.direccion}</span></div>` : ''}
+                    ${datos.comuna    ? `<div class="popup-fila"><span class="popup-fila-icon">🏛</span><span>Comuna ${datos.comuna}</span></div>` : ''}
+                    ${datos.precio    ? `<div class="popup-precio">$${datos.precio}</div>` : ''}
+                </div>
             </div>`;
     }
 
@@ -150,9 +376,9 @@
     }
 
     // ===== DETECTAR MODO =====
-    const urlParams   = new URLSearchParams(window.location.search);
-    const categoriaParam   = urlParams.get('categoria') || '';
-    const modoDetalle = categoriaParam.trim() !== '';
+    const urlParams      = new URLSearchParams(window.location.search);
+    const categoriaParam = urlParams.get('categoria') || '';
+    const modoDetalle    = categoriaParam.trim() !== '';
 
     // ── MODO 1: DETALLE DE EVENTO ──
     if (modoDetalle) {
@@ -170,20 +396,20 @@
 
                 for (const line of dataLines) {
                     if (!line.trim()) continue;
-                    const cols   = parseCSVLine(line);
-                    const categoria = cols[COL_CATEGORIA]     ?.replace(/"/g,'').trim() || '';
-                    const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
-                    const lat    = parseCoordenada(cols[COL_LAT]);
-                    const lng    = parseCoordenada(cols[COL_LNG]);
-                    const barrio = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
-                    const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
-                    const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
+                    const cols      = parseCSVLine(line);
+                    const categoria = cols[COL_CATEGORIA]?.replace(/"/g,'').trim() || '';
+                    const dir       = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
+                    const lat       = parseCoordenada(cols[COL_LAT]);
+                    const lng       = parseCoordenada(cols[COL_LNG]);
+                    const barrio    = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
+                    const precio    = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
+                    const comuna    = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
 
                     if (categoria.toLowerCase() === categoriaBuscado && !isNaN(lat) && !isNaN(lng)) {
                         map.setView([lat, lng], 16);
-                        L.marker([lat, lng])
+                        L.marker([lat, lng], { icon: crearIcono(categoria) })
                             .addTo(map)
-                            .bindPopup(crearPopup({ categoria, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
+                            .bindPopup(crearPopup({ categoria, direccion: dir, barrio, precio, comuna }), { maxWidth: 280 })
                             .openPopup();
                         encontrado = true;
                         break;
@@ -193,10 +419,10 @@
                 if (!encontrado) {
                     for (const line of dataLines) {
                         if (!line.trim()) continue;
-                        const cols   = parseCSVLine(line);
+                        const cols      = parseCSVLine(line);
                         const categoria = cols[COL_CATEGORIA]?.replace(/"/g,'').trim() || '';
-                        const lat    = parseCoordenada(cols[COL_LAT]);
-                        const lng    = parseCoordenada(cols[COL_LNG]);
+                        const lat       = parseCoordenada(cols[COL_LAT]);
+                        const lng       = parseCoordenada(cols[COL_LNG]);
 
                         if (categoria.toLowerCase().includes(categoriaBuscado) && !isNaN(lat) && !isNaN(lng)) {
                             const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
@@ -204,9 +430,9 @@
                             const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
                             const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
                             map.setView([lat, lng], 16);
-                            L.marker([lat, lng])
+                            L.marker([lat, lng], { icon: crearIcono(categoria) })
                                 .addTo(map)
-                                .bindPopup(crearPopup({ categoria, direccion: dir, barrio, precio, comuna }), { maxWidth: 260 })
+                                .bindPopup(crearPopup({ categoria, direccion: dir, barrio, precio, comuna }), { maxWidth: 280 })
                                 .openPopup();
                             break;
                         }
@@ -221,7 +447,6 @@
 
     // ── MODO 2: TODOS LOS EVENTOS (con buscador) ──
     else {
-        // Guardar todos los eventos para poder filtrar
         let todosLosEventos = [];
         let todosLosMarkers = [];
 
@@ -230,20 +455,21 @@
             .then(csvText => {
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('buscador').style.display = 'flex';
+                document.getElementById('header-pill').style.display = 'flex';
 
                 const lines     = csvText.trim().split('\n');
                 const dataLines = lines.slice(1);
 
                 dataLines.forEach(line => {
                     if (!line.trim()) return;
-                    const cols   = parseCSVLine(line);
-                    const categoria = cols[COL_CATEGORIA]     ?.replace(/"/g,'').trim() || '';
-                    const dir    = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
-                    const lat    = parseCoordenada(cols[COL_LAT]);
-                    const lng    = parseCoordenada(cols[COL_LNG]);
-                    const barrio = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
-                    const precio = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
-                    const comuna = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
+                    const cols      = parseCSVLine(line);
+                    const categoria = cols[COL_CATEGORIA]?.replace(/"/g,'').trim() || '';
+                    const dir       = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
+                    const lat       = parseCoordenada(cols[COL_LAT]);
+                    const lng       = parseCoordenada(cols[COL_LNG]);
+                    const barrio    = cols[COL_BARRIO]   ?.replace(/"/g,'').trim() || '';
+                    const precio    = cols[COL_PRECIO]   ?.replace(/"/g,'').trim() || '';
+                    const comuna    = cols[COL_COMUNA]   ?.replace(/"/g,'').trim() || '';
 
                     if (!isNaN(lat) && !isNaN(lng)) {
                         todosLosEventos.push({ categoria: categoria || dir, direccion: dir, lat, lng, barrio, precio, comuna });
@@ -258,52 +484,41 @@
             });
 
         function mostrarEventos(eventos) {
-            // Limpiar markers anteriores
             todosLosMarkers.forEach(m => map.removeLayer(m));
             todosLosMarkers = [];
             const bounds = [];
 
-            eventos.forEach(ev => {
-                const marker = L.marker([ev.lat, ev.lng])
+            eventos.forEach((ev, i) => {
+                const marker = L.marker([ev.lat, ev.lng], { icon: crearIcono(ev.categoria) })
                     .addTo(map)
-                    .bindPopup(crearPopup(ev), { maxWidth: 260 });
+                    .bindPopup(crearPopup(ev), { maxWidth: 280 });
                 todosLosMarkers.push(marker);
                 bounds.push([ev.lat, ev.lng]);
             });
 
-            if (bounds.length > 0) {
-                map.fitBounds(bounds, { padding: [50, 50] });
-            }
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [60, 60] });
 
-            // Mostrar contador si hay filtro activo
             const contador = document.getElementById('contador');
             const filtro   = document.getElementById('inputBarrio').value.trim();
             if (filtro) {
-                contador.textContent = eventos.length === 0
-                    ? 'Sin eventos en ese barrio'
-                    : `${eventos.length} evento${eventos.length > 1 ? 's' : ''} en "${filtro}"`;
+                const n = eventos.length;
+                contador.innerHTML = n === 0
+                    ? 'Sin resultados para ese barrio'
+                    : `<span>${n}</span> evento${n > 1 ? 's' : ''} en <span>"${filtro}"</span>`;
                 contador.style.display = 'block';
             } else {
                 contador.style.display = 'none';
             }
         }
 
-        // ── Lógica del buscador ──
-        const input  = document.getElementById('inputBarrio');
+        const input   = document.getElementById('inputBarrio');
         const limpiar = document.getElementById('limpiar');
 
         input.addEventListener('input', () => {
             const texto = input.value.trim().toLowerCase();
             limpiar.style.display = texto ? 'block' : 'none';
-
-            if (!texto) {
-                mostrarEventos(todosLosEventos);
-                return;
-            }
-
-            const filtrados = todosLosEventos.filter(ev =>
-                ev.barrio.toLowerCase().includes(texto)
-            );
+            if (!texto) { mostrarEventos(todosLosEventos); return; }
+            const filtrados = todosLosEventos.filter(ev => ev.barrio.toLowerCase().includes(texto));
             mostrarEventos(filtrados);
         });
 
@@ -316,4 +531,3 @@
 </script>
 </body>
 </html>
-
