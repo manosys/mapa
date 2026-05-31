@@ -65,7 +65,7 @@
         /* ── Header pill flotante ── */
         .header-pill {
             position: absolute;
-            top: 16px;
+            bottom: 52px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
@@ -79,6 +79,7 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.5);
             backdrop-filter: blur(12px);
             pointer-events: none;
+            white-space: nowrap;
         }
         .header-dot {
             width: 8px; height: 8px;
@@ -104,6 +105,7 @@
             position: absolute;
             top: 16px;
             right: 16px;
+            left: 16px;
             z-index: 1000;
             display: flex;
             align-items: center;
@@ -113,8 +115,14 @@
             padding: 10px 16px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.5);
             gap: 10px;
-            width: 230px;
             transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        @media (min-width: 500px) {
+            .buscador {
+                left: auto;
+                width: 240px;
+                right: 16px;
+            }
         }
         .buscador:focus-within {
             border-color: rgba(124,109,250,0.5);
@@ -144,7 +152,7 @@
         /* ── Contador ── */
         .contador {
             position: absolute;
-            bottom: 28px;
+            bottom: 100px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
@@ -158,6 +166,7 @@
             border-radius: 40px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             display: none;
+            white-space: nowrap;
         }
         .contador span { color: var(--accent); font-family: 'DM Mono', monospace; }
 
