@@ -100,54 +100,7 @@
             color: var(--text);
         }
 
-        /* ── Buscador flotante ── */
-        .buscador {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            left: 16px;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 40px;
-            padding: 10px 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            gap: 10px;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        @media (min-width: 500px) {
-            .buscador {
-                left: auto;
-                width: 240px;
-                right: 16px;
-            }
-        }
-        .buscador:focus-within {
-            border-color: rgba(124,109,250,0.5);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 3px rgba(124,109,250,0.12);
-        }
-        .buscador-icon { font-size: 14px; opacity: 0.5; flex-shrink: 0; }
-        .buscador input {
-            border: none; outline: none;
-            font-size: 13px;
-            width: 100%;
-            background: transparent;
-            color: var(--text);
-            font-family: 'DM Sans', sans-serif;
-        }
-        .buscador input::placeholder { color: var(--muted); }
-        .buscador .limpiar {
-            cursor: pointer;
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1;
-            display: none;
-            flex-shrink: 0;
-            transition: color 0.15s;
-        }
-        .buscador .limpiar:hover { color: var(--text); }
+
 
         /* ── Contador ── */
         .contador {
@@ -313,11 +266,7 @@
         <div class="header-label">Eventos en vivo</div>
     </div>
 
-    <div class="buscador" id="buscador" style="display:none">
-        <span class="buscador-icon">⌕</span>
-        <input type="text" id="inputBarrio" placeholder="Buscar por barrio..." />
-        <span class="limpiar" id="limpiar">✕</span>
-    </div>
+
 
     <div class="contador" id="contador"></div>
 
@@ -498,7 +447,6 @@
             .then(r => { if (!r.ok) throw new Error('Error HTTP: ' + r.status); return r.text(); })
             .then(csvText => {
                 document.getElementById('loading').style.display = 'none';
-                document.getElementById('buscador').style.display = 'flex';
                 document.getElementById('header-pill').style.display = 'flex';
 
                 const lines     = csvText.trim().split('\n');
@@ -543,35 +491,10 @@
             if (bounds.length > 0) map.fitBounds(bounds, { padding: [60, 60] });
 
             const contador = document.getElementById('contador');
-            const filtro   = document.getElementById('inputBarrio').value.trim();
-            if (filtro) {
-                const n = eventos.length;
-                contador.innerHTML = n === 0
-                    ? 'Sin resultados para ese barrio'
-                    : `<span>${n}</span> evento${n > 1 ? 's' : ''} en <span>"${filtro}"</span>`;
-                contador.style.display = 'block';
-            } else {
-                contador.style.display = 'none';
-            }
+            contador.style.display = 'none';
         }
 
-        const input   = document.getElementById('inputBarrio');
-        const limpiar = document.getElementById('limpiar');
-
-        input.addEventListener('input', () => {
-            const texto = input.value.trim().toLowerCase();
-            limpiar.style.display = texto ? 'block' : 'none';
-            if (!texto) { mostrarEventos(todosLosEventos); return; }
-            const filtrados = todosLosEventos.filter(ev => ev.barrio.toLowerCase().includes(texto));
-            mostrarEventos(filtrados);
-        });
-
-        limpiar.addEventListener('click', () => {
-            input.value = '';
-            limpiar.style.display = 'none';
-            mostrarEventos(todosLosEventos);
-        });
-    }
+        mostrarEventos(todosLosEventos);
 </script>
 </body>
 </html>
