@@ -128,3 +128,13 @@ if (modoDetalle) {
         if (!line.trim()) continue;
         const cols = parseCSVLine(line);
         const categoria = cols[COL_CATEGORIA]?.replace(/"/g,'').trim() || '';
+        const dir = cols[COL_DIRECCION]?.replace(/"/g,'').trim() || '';
+        const lat = parseCoordenada(cols[COL_LAT]);
+        const lng = parseCoordenada(cols[COL_LNG]);
+        const barrio = cols[COL_BARRIO]?.replace(/"/g,'').trim() || '';
+        const precio = cols[COL_PRECIO]?.replace(/"/g,'').trim() || '';
+        const comuna = cols[COL_COMUNA]?.replace(/"/g,'').trim() || '';
+        if (categoria.toLowerCase() === categoriaBuscado && !isNaN(lat) && !isNaN(lng)) {
+          map.setView([lat, lng], 16);
+          L.marker([lat, lng]).addTo(map)
+            .bindPopup(crearPopup({ categoria, direccion: dir
